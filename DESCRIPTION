@@ -1,0 +1,9 @@
+Package: smbaFinances
+Title: SMBA Finances
+Version: 0.0.0.9000
+Authors@R: person("Andy", "Choens", email = "andy.choens@example.com", role = c("aut", "cre"))
+Description: My attempts to manage SMBA's finances.
+Depends: R (>= 3.3.1)
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
