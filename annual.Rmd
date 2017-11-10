@@ -1,0 +1,170 @@
+---
+title: SMBA Annual Financial Report
+date: "`r lubridate::today()`"
+header-includes:
+    \usepackage{graphicx}
+    \usepackage{fancyhdr}
+    \pagestyle{fancy}
+    \setlength\headheight{28pt}
+    \rhead{\includegraphics[widht = 0.5\textwidth]{logo.png}}
+    \fancyfoot[LE,RO]{GPIM}
+output: 
+    pdf_document:
+        fig_width: 5
+        fig_height: 3.25
+params:
+    cy: 2017
+    cy_beg: "2017-01-01"
+    cy_end: "2017-12-31"
+    incomplete_year: TRUE
+---
+
+
+```{r init, echo=FALSE, message=FALSE}
+
+## Variables -------------------------------------------------------------------
+cy <- params$cy
+cy_beg <- as.Date(params$cy_beg)
+cy_end <- as.Date(params$cy_end)
+incomplete_year <- params$incomplete_year
+
+## Packages --------------------------------------------------------------------
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(pander)
+library(tibble)
+
+## Settings --------------------------------------------------------------------
+load('data/ledger.RData')
+load('data/ledger_monthly.RData')
+
+panderOptions('table.alignment.default', function(df)
+    ifelse(sapply(df, is.numeric), 'right', 'left'))
+panderOptions('table.split.table', Inf)
+panderOptions('big.mark', ",")
+panderOptions('keep.trailing.zeros', TRUE)
+
+if (incomplete_year) {
+    cy_stmt <- paste0('This "annual report" was run on ', today(), ', and does not include data for the remaining months in the current calendar year.')
+} else {
+    cy_stmt <- ''
+}
+
+```
+
+```{r mei, echo=FALSE}
+
+mn_tran <-
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize(avg=mean(n_transactions))
+
+tot_dep <-
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize(tot=sum(tot_deposits))
+
+tot_exp <-
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize(tot=sum(tot_expenses))
+
+if(tot_dep[1] == tot_exp[1]){
+    stmt <- paste0('During the year, total expenses equaled total deposits.')
+    }
+
+if(tot_dep[1] < tot_exp[1]){
+    stmt <- paste0('During the year, total expenses outpaced total deposits by $',
+                  round(tot_exp[1] - tot_dep[1],0),
+                  '.')
+    }
+
+if(tot_dep[1] > tot_exp[1]){
+    stmt <- paste0('During the year total deposits outpaced total expenditures by $',
+                  round(tot_dep[1] - tot_exp[1],0),
+                  '.')
+    }
+
+```
+
+This is the SMBA financial report for calendar year `r cy`. `r stmt`
+
+```{r echo=FALSE}
+
+cm <- 
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(month_lab) %>%
+    select('Month' = month_lab,
+           "N Transactions"       = n_transactions,
+           'Expenses'             = tot_expenses,
+           'Income'               = tot_deposits,
+           'End of Month Balance' = last_balance
+           )
+
+cm_tot <- 
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize('Month'                = '*Total*',
+              "N Transactions"       = sum(n_transactions),
+              'Expenses'             = sum(tot_expenses),
+              'Income'               = sum(tot_deposits),
+              'End of Month Balance' = last(last_balance)
+              )
+
+bind_rows(cm, cm_tot) %>%
+    pander(., caption = paste("Monthly ledger report: calendar year", cy))
+
+```
+
+```{r mb, echo=FALSE}
+
+min_bal <-
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize(min_bal=min(min_balance))
+min_bal <- paste("$",format(round(min_bal$min_bal[1],0), big.mark = ","),sep="")
+
+max_bal <-
+    ledger_monthly %>%
+    filter(cy == year) %>%
+    group_by(.) %>%
+    summarize(max_bal=max(max_balance))
+max_bal <- paste("$",format(round(max_bal$max_bal[1],0), big.mark = ","),sep="")
+
+```
+
+During the year, SMBA maintained an end-of-month balance between `r min_bal` and `r max_bal`.
+
+```{r echo=FALSE, fig.align="center"}
+
+plt_dat <- ledger_monthly %>% filter(year == cy)
+max_val <- round(max(plt_dat$last_balance) + 1000, -3)
+min_val <- round(min(plt_dat$last_balance) -1000, -3)
+
+## plot(x=plt_dat$month,
+##      y=plt_dat$last_balance,
+##      type="l",
+##      ylim = c(min_val,max_val),
+##      main = paste("Balance At Month's End (CY ", cy,")",sep=""),
+##      xlab = "Month",
+##      ylab = "Balance"
+##      )
+## axis(side=1, at=axTicks(2), labels=formatC(axTicks(2),  big.mark=','))
+
+ggplot(plt_dat, aes(x = month, y = last_balance)) +
+    geom_point(aes(size = n_transactions), fill = 'white' ) +
+    geom_line(aes(group = 1)) +
+    scale_y_continuous(limits = c(10000, 16000)) +
+    scale_x_continuous(limits = c(1,12), breaks = 1:12) +
+    labs(x = 'Month',
+         y = 'Balance',
+         size = 'Number of Transactions') +
+    ggtitle('End of Month Ledger Balance')
+```
