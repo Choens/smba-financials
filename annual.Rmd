@@ -32,18 +32,18 @@ incomplete_year <- params$incomplete_year
 library(dplyr)
 library(ggplot2)
 library(lubridate)
-library(pander)
+library(knitr)
 library(tibble)
 
 ## Settings --------------------------------------------------------------------
 load('data/ledger.RData')
 load('data/ledger_monthly.RData')
 
-panderOptions('table.alignment.default', function(df)
-    ifelse(sapply(df, is.numeric), 'right', 'left'))
-panderOptions('table.split.table', Inf)
-panderOptions('big.mark', ",")
-panderOptions('keep.trailing.zeros', TRUE)
+## panderOptions('table.alignment.default', function(df)
+##     ifelse(sapply(df, is.numeric), 'right', 'left'))
+## panderOptions('table.split.table', Inf)
+## panderOptions('big.mark', ",")
+## panderOptions('keep.trailing.zeros', TRUE)
 
 if (incomplete_year) {
     cy_stmt <- paste0('This "annual report" was run on ', today(), ', and does not include data for the remaining months in the current calendar year.')
@@ -118,7 +118,7 @@ cm_tot <-
               )
 
 bind_rows(cm, cm_tot) %>%
-    pander(., caption = paste("Monthly ledger report: calendar year", cy))
+    kable(., caption = paste("Monthly ledger report: calendar year", cy), format.args=list(nsmall = 2))
 
 ```
 
